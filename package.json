@@ -1,0 +1,26 @@
+{
+  "name": "langfuse-analytics-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Langfuse analytics and cost monitoring",
+  "type": "module",
+  "main": "build/index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "prepare": "npm run build",
+    "dev": "tsc --watch",
+    "inspector": "node build/index.js"
+  },
+  "keywords": ["mcp", "langfuse", "analytics"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "langfuse": "^3.29.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
