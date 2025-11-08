@@ -32,14 +32,12 @@
 
 ## Installation
 
-### Option 1: Using npx (When Published)
+### Option 1: Using npx (Recommended)
 
 ```bash
 # No installation needed - run directly with npx
-npx langfuse-mcp
+npx @therealsachin/langfuse-mcp
 ```
-
-**Note:** Package is configured for npm publishing but not yet published. Use local development option below for now.
 
 ### Option 2: Local Development
 
@@ -127,14 +125,14 @@ LANGFUSE_SECRET_KEY=sk-lf-your-actual-secret-key
 
 Add to your `claude_desktop_config.json`:
 
-### Option 1: Using npx (When Published)
+### Option 1: Using npx (Recommended)
 
 ```json
 {
   "mcpServers": {
     "langfuse-analytics": {
       "command": "npx",
-      "args": ["langfuse-mcp"],
+      "args": ["@therealsachin/langfuse-mcp"],
       "env": {
         "LANGFUSE_PUBLIC_KEY": "pk-lf-xxx",
         "LANGFUSE_SECRET_KEY": "sk-lf-xxx",
@@ -226,18 +224,20 @@ The test suite (`npm run test`) will automatically load these credentials using 
 
 ## Publishing to NPM
 
-To make the package available via `npx langfuse-mcp`:
+**✅ Package Published!** The package is available via:
 
 ```bash
-# Login to npm (first time only)
-npm login
+# Install and run directly with npx
+npx @therealsachin/langfuse-mcp
 
-# Publish the package
-npm publish
-
-# Test global installation
-npx langfuse-mcp
+# Or install globally
+npm install -g @therealsachin/langfuse-mcp
 ```
+
+**Package Information:**
+- **Name:** `@therealsachin/langfuse-mcp`
+- **Version:** 1.1.1
+- **NPM URL:** https://www.npmjs.com/package/@therealsachin/langfuse-mcp
 
 ## Project Structure
 
