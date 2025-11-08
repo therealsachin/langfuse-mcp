@@ -35,11 +35,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/therealsachin/langfuse-mcp-server.git"
+    "url": "git+https://github.com/therealsachin/langfuse-mcp.git"
   },
-  "homepage": "https://github.com/therealsachin/langfuse-mcp-server#readme",
+  "homepage": "https://github.com/therealsachin/langfuse-mcp#readme",
   "bugs": {
-    "url": "https://github.com/therealsachin/langfuse-mcp-server/issues"
+    "url": "https://github.com/therealsachin/langfuse-mcp/issues"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",

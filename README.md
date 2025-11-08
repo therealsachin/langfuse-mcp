@@ -44,7 +44,7 @@ npx langfuse-mcp
 ### Option 2: Local Development
 
 ```bash
-git clone https://github.com/therealsachin/langfuse-mcp-server.git
+git clone https://github.com/therealsachin/langfuse-mcp.git
 cd langfuse-mcp
 npm install
 npm run build
