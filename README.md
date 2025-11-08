@@ -1,4 +1,4 @@
-# Langfuse Analytics MCP Server
+# Langfuse MCP Server
 
 An MCP server for querying Langfuse analytics, cost metrics, and usage data across multiple projects.
 
@@ -11,7 +11,20 @@ An MCP server for querying Langfuse analytics, cost metrics, and usage data acro
 
 ## Installation
 
+### Option 1: Using npx (When Published)
+
 ```bash
+# No installation needed - run directly with npx
+npx langfuse-mcp
+```
+
+**Note:** Package is configured for npm publishing but not yet published. Use local development option below for now.
+
+### Option 2: Local Development
+
+```bash
+git clone https://github.com/therealsachin/langfuse-mcp-server.git
+cd langfuse-mcp
 npm install
 npm run build
 ```
@@ -48,6 +61,26 @@ LANGFUSE_BASEURL=https://us.cloud.langfuse.com
 
 Add to your `claude_desktop_config.json`:
 
+### Option 1: Using npx (When Published)
+
+```json
+{
+  "mcpServers": {
+    "langfuse-analytics": {
+      "command": "npx",
+      "args": ["langfuse-mcp"],
+      "env": {
+        "LANGFUSE_PUBLIC_KEY": "pk-lf-xxx",
+        "LANGFUSE_SECRET_KEY": "sk-lf-xxx",
+        "LANGFUSE_BASEURL": "https://us.cloud.langfuse.com"
+      }
+    }
+  }
+}
+```
+
+### Option 2: Local Installation
+
 ```json
 {
   "mcpServers": {
@@ -82,6 +115,24 @@ npm run watch
 
 # Test with MCP Inspector
 npm run inspector
+
+# Test endpoints
+npm run test
+```
+
+## Publishing to NPM
+
+To make the package available via `npx langfuse-mcp`:
+
+```bash
+# Login to npm (first time only)
+npm login
+
+# Publish the package
+npm publish
+
+# Test global installation
+npx langfuse-mcp
 ```
 
 ## Project Structure
@@ -92,13 +143,19 @@ src/
 ├── config.ts             # Project configuration loader
 ├── langfuse-client.ts    # Langfuse client wrapper
 ├── types.ts              # TypeScript type definitions
-└── tools/
+└── tools/                # All 12 MCP tools
     ├── list-projects.ts
     ├── project-overview.ts
     ├── usage-by-model.ts
     ├── usage-by-service.ts
     ├── top-expensive-traces.ts
-    └── get-trace-detail.ts
+    ├── get-trace-detail.ts
+    ├── get-projects.ts          # Alias for list-projects
+    ├── get-metrics.ts           # Aggregated metrics
+    ├── get-traces.ts            # Trace filtering
+    ├── get-observations.ts      # LLM generations
+    ├── get-cost-analysis.ts     # Cost breakdowns
+    └── get-daily-metrics.ts     # Daily trends
 ```
 
 ## API Integration
@@ -173,6 +230,22 @@ All authentication is handled server-side using Basic Auth with your Langfuse AP
 - ✅ `byModel` now populated with real model cost breakdowns
 - ✅ `byDay` continues to work perfectly
 - 🔍 `byUser` includes debugging to identify any remaining field mapping issues
+
+### ✅ Fixed: usage_by_model Showing Zero Costs/Tokens
+
+**Previous Issue**: usage_by_model showed observation counts correctly but all costs and tokens as zero.
+
+**Root Cause**: Same metrics API field mapping issue affecting cost calculations.
+
+**Solution**: Applied the same daily metrics approach used in cost analysis:
+- **Primary Method**: Uses `getDailyMetrics` API to aggregate model costs and tokens from daily usage breakdowns
+- **Fallback Method**: Falls back to original metrics API with enhanced debugging if daily API fails
+- **Data Aggregation**: Properly extracts `totalCost`, `totalUsage`, and `countObservations` from daily data
+
+**Result**:
+- ✅ Models now show real `totalCost` values instead of 0
+- ✅ Models now show real `totalTokens` values instead of 0
+- ✅ `observationCount` continues to work correctly
 
 ### Performance Considerations
 

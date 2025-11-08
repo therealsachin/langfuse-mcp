@@ -1,19 +1,46 @@
 {
-  "name": "langfuse-analytics-mcp",
-  "version": "0.1.0",
-  "description": "MCP server for Langfuse analytics and cost monitoring",
+  "name": "langfuse-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Langfuse analytics and cost monitoring with comprehensive metrics, traces, and cost analysis",
   "type": "module",
   "main": "build/index.js",
+  "bin": {
+    "langfuse-mcp": "build/index.js"
+  },
+  "files": [
+    "build/**/*",
+    "README.md",
+    "package.json"
+  ],
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
     "prepare": "npm run build",
     "dev": "tsc --watch",
-    "inspector": "node build/index.js"
+    "inspector": "node build/index.js",
+    "test": "node test-endpoints.js",
+    "prepublishOnly": "npm run build"
   },
-  "keywords": ["mcp", "langfuse", "analytics"],
-  "author": "",
+  "keywords": [
+    "mcp",
+    "langfuse",
+    "analytics",
+    "llm",
+    "tracing",
+    "observability",
+    "cost-monitoring",
+    "model-context-protocol"
+  ],
+  "author": "Sachin Shenoy <therealsachin@users.noreply.github.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/therealsachin/langfuse-mcp-server.git"
+  },
+  "homepage": "https://github.com/therealsachin/langfuse-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/therealsachin/langfuse-mcp-server/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "langfuse": "^3.29.0",

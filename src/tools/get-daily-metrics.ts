@@ -13,155 +13,117 @@ export async function getDailyMetrics(
   client: LangfuseAnalyticsClient,
   args: z.infer<typeof getDailyMetricsSchema>
 ) {
-  const filters: any[] = [];
-  if (args.environment) {
-    filters.push({
-      column: 'environment',
-      operator: 'equals',
-      value: args.environment,
-      type: 'string',
+  try {
+    // Use the working getDailyMetrics API directly (same approach as cost_analysis)
+    const dailyResponse = await client.getDailyMetrics({
+      tags: args.environment ? [`environment:${args.environment}`] : undefined,
     });
-  }
 
-  // Get trace metrics grouped by day
-  const traceResponse = await client.getMetrics({
-    view: 'traces',
-    from: args.from,
-    to: args.to,
-    metrics: [
-      { measure: 'totalCost', aggregation: 'sum' },
-      { measure: 'totalTokens', aggregation: 'sum' },
-      { measure: 'count', aggregation: 'count' },
-    ],
-    dimensions: [{ field: 'timestamp' }],
-    filters,
-  });
+    const dailyData: any[] = [];
 
-  // Get observation metrics for total observations count
-  const observationResponse = await client.getMetrics({
-    view: 'observations',
-    from: args.from,
-    to: args.to,
-    metrics: [{ measure: 'count', aggregation: 'count' }],
-    dimensions: [{ field: 'timestamp' }],
-    filters,
-  });
+    if (dailyResponse.data && Array.isArray(dailyResponse.data)) {
+      // Filter by date range
+      const fromDate = new Date(args.from);
+      const toDate = new Date(args.to);
 
-  // Process data by day
-  const dailyDataMap = new Map<string, {
-    totalCost: number;
-    totalTokens: number;
-    totalTraces: number;
-    totalObservations: number;
-  }>();
-
-  // Process trace data
-  if (traceResponse.data && Array.isArray(traceResponse.data)) {
-    traceResponse.data.forEach((row: any) => {
-      if (row.timestamp) {
-        const date = new Date(row.timestamp).toISOString().split('T')[0];
-        const existing = dailyDataMap.get(date) || {
-          totalCost: 0,
-          totalTokens: 0,
-          totalTraces: 0,
-          totalObservations: 0,
-        };
-
-        dailyDataMap.set(date, {
-          ...existing,
-          totalCost: existing.totalCost + (row.totalCost_sum || 0),
-          totalTokens: existing.totalTokens + (row.totalTokens_sum || 0),
-          totalTraces: existing.totalTraces + (row.count_count || 0),
-        });
-      }
-    });
-  }
-
-  // Process observation data
-  if (observationResponse.data && Array.isArray(observationResponse.data)) {
-    observationResponse.data.forEach((row: any) => {
-      if (row.timestamp) {
-        const date = new Date(row.timestamp).toISOString().split('T')[0];
-        const existing = dailyDataMap.get(date) || {
-          totalCost: 0,
-          totalTokens: 0,
-          totalTraces: 0,
-          totalObservations: 0,
-        };
-
-        dailyDataMap.set(date, {
-          ...existing,
-          totalObservations: existing.totalObservations + (row.count_count || 0),
-        });
-      }
-    });
-  }
-
-  // Generate daily data array
-  const dailyData = [];
-
-  if (args.fillMissingDays) {
-    // Fill in missing days with zero values
-    const startDate = new Date(args.from);
-    const endDate = new Date(args.to);
-
-    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-      const dateStr = date.toISOString().split('T')[0];
-      const data = dailyDataMap.get(dateStr) || {
-        totalCost: 0,
-        totalTokens: 0,
-        totalTraces: 0,
-        totalObservations: 0,
-      };
-
-      dailyData.push({
-        date: dateStr,
-        totalCost: data.totalCost,
-        totalTokens: data.totalTokens,
-        totalTraces: data.totalTraces,
-        totalObservations: data.totalObservations,
-        avgCostPerTrace: data.totalTraces > 0
-          ? Math.round((data.totalCost / data.totalTraces) * 10000) / 10000
-          : 0,
-        avgTokensPerTrace: data.totalTraces > 0
-          ? Math.round((data.totalTokens / data.totalTraces) * 100) / 100
-          : 0,
+      const filteredData = dailyResponse.data.filter((day: any) => {
+        const dayDate = new Date(day.date);
+        return dayDate >= fromDate && dayDate <= toDate;
       });
-    }
-  } else {
-    // Only include days with actual data
-    Array.from(dailyDataMap.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .forEach(([date, data]) => {
+
+      // Process each day's data
+      filteredData.forEach((day: any) => {
+        // Calculate total tokens from usage breakdown
+        let totalTokens = 0;
+        let totalObservations = 0;
+        if (day.usage && Array.isArray(day.usage)) {
+          totalTokens = day.usage.reduce((sum: number, usage: any) => {
+            return sum + (usage.totalUsage || usage.inputUsage + usage.outputUsage || 0);
+          }, 0);
+          totalObservations = day.usage.reduce((sum: number, usage: any) => {
+            return sum + (usage.countObservations || 0);
+          }, 0);
+        }
+
         dailyData.push({
-          date,
-          totalCost: data.totalCost,
-          totalTokens: data.totalTokens,
-          totalTraces: data.totalTraces,
-          totalObservations: data.totalObservations,
-          avgCostPerTrace: data.totalTraces > 0
-            ? Math.round((data.totalCost / data.totalTraces) * 10000) / 10000
+          date: day.date,
+          totalCost: day.totalCost || 0,
+          totalTokens: totalTokens,
+          totalTraces: day.countTraces || 0,
+          totalObservations: totalObservations || day.countObservations || 0,
+          avgCostPerTrace: (day.countTraces || 0) > 0
+            ? Math.round(((day.totalCost || 0) / (day.countTraces || 0)) * 10000) / 10000
             : 0,
-          avgTokensPerTrace: data.totalTraces > 0
-            ? Math.round((data.totalTokens / data.totalTraces) * 100) / 100
+          avgTokensPerTrace: (day.countTraces || 0) > 0
+            ? Math.round((totalTokens / (day.countTraces || 0)) * 100) / 100
             : 0,
         });
       });
+
+      // Fill in missing days if requested
+      if (args.fillMissingDays) {
+        const startDate = new Date(args.from);
+        const endDate = new Date(args.to);
+        const dataMap = new Map(dailyData.map(d => [d.date, d]));
+
+        dailyData.length = 0; // Clear array
+
+        for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+          const dateStr = date.toISOString().split('T')[0];
+          const existingData = dataMap.get(dateStr);
+
+          if (existingData) {
+            dailyData.push(existingData);
+          } else {
+            // Fill missing day with zeros
+            dailyData.push({
+              date: dateStr,
+              totalCost: 0,
+              totalTokens: 0,
+              totalTraces: 0,
+              totalObservations: 0,
+              avgCostPerTrace: 0,
+              avgTokensPerTrace: 0,
+            });
+          }
+        }
+      }
+
+      // Sort by date
+      dailyData.sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    // Return the successful result
+    const result: DailyMetrics = {
+      projectId: client.getProjectId(),
+      from: args.from,
+      to: args.to,
+      dailyData,
+    };
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            error: 'Failed to get daily metrics',
+            message: error instanceof Error ? error.message : 'Unknown error',
+            projectId: client.getProjectId(),
+            from: args.from,
+            to: args.to,
+          }, null, 2),
+        },
+      ],
+      isError: true,
+    };
   }
-
-  const result: DailyMetrics = {
-    projectId: client.getProjectId(),
-    from: args.from,
-    to: args.to,
-    dailyData,
-  };
-
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result, null, 2),
-      },
-    ],
-  };
 }

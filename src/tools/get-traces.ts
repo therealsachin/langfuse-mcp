@@ -7,7 +7,7 @@ export const getTracesSchema = z.object({
   to: z.string().datetime().optional(),
   limit: z.number().min(1).max(100).default(25),
   page: z.number().min(1).default(1),
-  orderBy: z.enum(['timestamp', 'totalCost', 'totalTokens']).default('timestamp'),
+  orderBy: z.enum(['timestamp', 'totalCost', 'name']).default('timestamp'),
   orderDirection: z.enum(['asc', 'desc']).default('desc'),
   userId: z.string().optional(),
   name: z.string().optional(),
@@ -38,13 +38,14 @@ export async function getTraces(
       userId: args.userId,
       tags: tags.length > 0 ? tags : undefined,
       orderBy: args.orderBy,
+      orderDirection: args.orderDirection,
       fromTimestamp: args.from,
       toTimestamp: args.to,
     });
 
   let traces = [];
-  if (response.traces && Array.isArray(response.traces)) {
-    traces = response.traces.map((trace: any) => ({
+  if (response.data && Array.isArray(response.data)) {
+    traces = response.data.map((trace: any) => ({
       id: trace.id,
       name: trace.name || 'Unnamed trace',
       timestamp: trace.timestamp || trace.startTime,
@@ -76,8 +77,8 @@ export async function getTraces(
         case 'totalCost':
           comparison = (a.totalCost || 0) - (b.totalCost || 0);
           break;
-        case 'totalTokens':
-          comparison = (a.totalTokens || 0) - (b.totalTokens || 0);
+        case 'name':
+          comparison = (a.name || '').localeCompare(b.name || '');
           break;
       }
       return args.orderDirection === 'desc' ? -comparison : comparison;

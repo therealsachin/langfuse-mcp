@@ -19,6 +19,7 @@ export async function topExpensiveTraces(
     fromTimestamp: args.from,
     toTimestamp: args.to,
     orderBy: 'totalCost',
+    orderDirection: 'desc', // Most expensive first
     limit: args.limit,
     tags,
   });
@@ -26,8 +27,8 @@ export async function topExpensiveTraces(
   const traces: ExpensiveTrace[] = [];
 
   // Parse the response data - correct structure based on Langfuse API
-  if (response.traces && Array.isArray(response.traces)) {
-    response.traces
+  if (response.data && Array.isArray(response.data)) {
+    response.data
       .filter((trace: any) => (trace.totalCost || 0) > 0) // Only include traces with cost
       .sort((a: any, b: any) => (b.totalCost || 0) - (a.totalCost || 0)) // Sort by cost descending
       .slice(0, args.limit) // Limit results

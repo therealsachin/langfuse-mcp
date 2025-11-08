@@ -67,6 +67,7 @@ export class LangfuseAnalyticsClient {
     tags?: string[];
     filter?: string; // JSON-encoded filter object for advanced filtering
     orderBy?: string;
+    orderDirection?: 'asc' | 'desc';
     fromTimestamp?: string;
     toTimestamp?: string;
   }): Promise<any> {
@@ -77,12 +78,14 @@ export class LangfuseAnalyticsClient {
     if (params.name) queryParams.append('name', params.name);
     if (params.userId) queryParams.append('userId', params.userId);
 
-    // Only include orderBy if it's a supported value
+    // Try using order_by parameter (snake_case) as seen in Python SDK examples
     if (params.orderBy) {
-      // Langfuse API might expect different orderBy format
       const supportedOrderBy = ['timestamp', 'name', 'totalCost'];
       if (supportedOrderBy.includes(params.orderBy)) {
-        queryParams.append('orderBy', params.orderBy);
+        // Try order_by with direction suffix (e.g., "totalCost DESC")
+        const direction = params.orderDirection === 'asc' ? 'ASC' : 'DESC';
+        const orderByValue = `${params.orderBy} ${direction}`;
+        queryParams.append('order_by', orderByValue);
       }
     }
 
