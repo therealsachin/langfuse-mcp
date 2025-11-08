@@ -30,6 +30,14 @@ import { listModels, listModelsSchema } from './tools/list-models.js';
 import { getModelDetail, getModelDetailSchema } from './tools/get-model-detail.js';
 import { listPrompts, listPromptsSchema } from './tools/list-prompts.js';
 import { getPromptDetail, getPromptDetailSchema } from './tools/get-prompt-detail.js';
+// Dataset management tools
+import { createDataset, createDatasetSchema } from './tools/create-dataset.js';
+import { listDatasets, listDatasetsSchema } from './tools/list-datasets.js';
+import { getDataset, getDatasetSchema } from './tools/get-dataset.js';
+import { createDatasetItem, createDatasetItemSchema } from './tools/create-dataset-item.js';
+import { listDatasetItems, listDatasetItemsSchema } from './tools/list-dataset-items.js';
+import { getDatasetItem, getDatasetItemSchema } from './tools/get-dataset-item.js';
+import { deleteDatasetItem, deleteDatasetItemSchema } from './tools/delete-dataset-item.js';
 
 class LangfuseAnalyticsServer {
   private server: Server;
@@ -543,6 +551,156 @@ class LangfuseAnalyticsServer {
             required: ['promptName'],
           },
         },
+        // Dataset management tools
+        {
+          name: 'create_dataset',
+          description: 'Create a new dataset for organizing test data and examples.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              name: {
+                type: 'string',
+                description: 'Name of the dataset (required)',
+              },
+              description: {
+                type: 'string',
+                description: 'Optional description of the dataset',
+              },
+              metadata: {
+                type: 'object',
+                description: 'Optional metadata object for the dataset',
+              },
+            },
+            required: ['name'],
+          },
+        },
+        {
+          name: 'list_datasets',
+          description: 'List all datasets in the project with pagination support.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              page: {
+                type: 'number',
+                description: 'Page number for pagination (starts at 1)',
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum number of datasets to return (default: 50)',
+              },
+            },
+          },
+        },
+        {
+          name: 'get_dataset',
+          description: 'Get detailed information about a specific dataset by name.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              datasetName: {
+                type: 'string',
+                description: 'Name of the dataset to retrieve',
+              },
+            },
+            required: ['datasetName'],
+          },
+        },
+        {
+          name: 'create_dataset_item',
+          description: 'Add a new item to a dataset with input/output examples.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              datasetName: {
+                type: 'string',
+                description: 'Name of the dataset to add the item to (required)',
+              },
+              input: {
+                type: 'object',
+                description: 'Input data for the dataset item',
+              },
+              expectedOutput: {
+                type: 'object',
+                description: 'Expected output for the dataset item',
+              },
+              metadata: {
+                type: 'object',
+                description: 'Optional metadata object for the dataset item',
+              },
+              sourceTraceId: {
+                type: 'string',
+                description: 'Optional trace ID this dataset item is derived from',
+              },
+              sourceObservationId: {
+                type: 'string',
+                description: 'Optional observation ID this dataset item is derived from',
+              },
+              status: {
+                type: 'string',
+                enum: ['ACTIVE', 'ARCHIVED'],
+                description: 'Status of the dataset item (default: ACTIVE)',
+              },
+            },
+            required: ['datasetName'],
+          },
+        },
+        {
+          name: 'list_dataset_items',
+          description: 'List items in datasets with filtering and pagination.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              datasetName: {
+                type: 'string',
+                description: 'Filter by dataset name',
+              },
+              sourceTraceId: {
+                type: 'string',
+                description: 'Filter by source trace ID',
+              },
+              sourceObservationId: {
+                type: 'string',
+                description: 'Filter by source observation ID',
+              },
+              page: {
+                type: 'number',
+                description: 'Page number for pagination (starts at 1)',
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum number of items to return (default: 50)',
+              },
+            },
+          },
+        },
+        {
+          name: 'get_dataset_item',
+          description: 'Get detailed information about a specific dataset item.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              itemId: {
+                type: 'string',
+                description: 'ID of the dataset item to retrieve',
+              },
+            },
+            required: ['itemId'],
+          },
+        },
+        {
+          name: 'delete_dataset_item',
+          description: 'Delete a dataset item permanently from the dataset.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              itemId: {
+                type: 'string',
+                description: 'ID of the dataset item to delete',
+              },
+            },
+            required: ['itemId'],
+          },
+        },
       ],
     }));
 
@@ -640,6 +798,42 @@ class LangfuseAnalyticsServer {
           case 'get_prompt_detail': {
             const args = getPromptDetailSchema.parse(request.params.arguments);
             return await getPromptDetail(this.client, args);
+          }
+
+          // Dataset management tools
+          case 'create_dataset': {
+            const args = createDatasetSchema.parse(request.params.arguments);
+            return await createDataset(this.client, args);
+          }
+
+          case 'list_datasets': {
+            const args = listDatasetsSchema.parse(request.params.arguments);
+            return await listDatasets(this.client, args);
+          }
+
+          case 'get_dataset': {
+            const args = getDatasetSchema.parse(request.params.arguments);
+            return await getDataset(this.client, args);
+          }
+
+          case 'create_dataset_item': {
+            const args = createDatasetItemSchema.parse(request.params.arguments);
+            return await createDatasetItem(this.client, args);
+          }
+
+          case 'list_dataset_items': {
+            const args = listDatasetItemsSchema.parse(request.params.arguments);
+            return await listDatasetItems(this.client, args);
+          }
+
+          case 'get_dataset_item': {
+            const args = getDatasetItemSchema.parse(request.params.arguments);
+            return await getDatasetItem(this.client, args);
+          }
+
+          case 'delete_dataset_item': {
+            const args = deleteDatasetItemSchema.parse(request.params.arguments);
+            return await deleteDatasetItem(this.client, args);
           }
 
           default:

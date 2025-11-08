@@ -350,6 +350,175 @@ export class LangfuseAnalyticsClient {
     return await response.json();
   }
 
+  // Dataset management methods
+  async createDataset(params: {
+    name: string;
+    description?: string;
+    metadata?: any;
+  }): Promise<any> {
+    const authHeader = 'Basic ' + Buffer.from(
+      `${this.config.publicKey}:${this.config.secretKey}`
+    ).toString('base64');
+
+    const response = await fetch(`${this.config.baseUrl}/api/public/v2/datasets`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      await this.handleApiError(response, 'Create Dataset');
+    }
+
+    return await response.json();
+  }
+
+  async listDatasets(params: {
+    page?: number;
+    limit?: number;
+  } = {}): Promise<any> {
+    const queryParams = new URLSearchParams();
+
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+
+    const authHeader = 'Basic ' + Buffer.from(
+      `${this.config.publicKey}:${this.config.secretKey}`
+    ).toString('base64');
+
+    const response = await fetch(`${this.config.baseUrl}/api/public/v2/datasets?${queryParams}`, {
+      headers: {
+        'Authorization': authHeader,
+      },
+    });
+
+    if (!response.ok) {
+      await this.handleApiError(response, 'List Datasets');
+    }
+
+    return await response.json();
+  }
+
+  async getDataset(datasetName: string): Promise<any> {
+    const authHeader = 'Basic ' + Buffer.from(
+      `${this.config.publicKey}:${this.config.secretKey}`
+    ).toString('base64');
+
+    const response = await fetch(`${this.config.baseUrl}/api/public/v2/datasets/${encodeURIComponent(datasetName)}`, {
+      headers: {
+        'Authorization': authHeader,
+      },
+    });
+
+    if (!response.ok) {
+      await this.handleApiError(response, 'Get Dataset');
+    }
+
+    return await response.json();
+  }
+
+  // Dataset item management methods
+  async createDatasetItem(params: {
+    datasetName: string;
+    input?: any;
+    expectedOutput?: any;
+    metadata?: any;
+    sourceTraceId?: string;
+    sourceObservationId?: string;
+    status?: 'ACTIVE' | 'ARCHIVED';
+  }): Promise<any> {
+    const authHeader = 'Basic ' + Buffer.from(
+      `${this.config.publicKey}:${this.config.secretKey}`
+    ).toString('base64');
+
+    const response = await fetch(`${this.config.baseUrl}/api/public/dataset-items`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      await this.handleApiError(response, 'Create Dataset Item');
+    }
+
+    return await response.json();
+  }
+
+  async listDatasetItems(params: {
+    datasetName?: string;
+    sourceTraceId?: string;
+    sourceObservationId?: string;
+    page?: number;
+    limit?: number;
+  } = {}): Promise<any> {
+    const queryParams = new URLSearchParams();
+
+    if (params.datasetName) queryParams.append('datasetName', params.datasetName);
+    if (params.sourceTraceId) queryParams.append('sourceTraceId', params.sourceTraceId);
+    if (params.sourceObservationId) queryParams.append('sourceObservationId', params.sourceObservationId);
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+
+    const authHeader = 'Basic ' + Buffer.from(
+      `${this.config.publicKey}:${this.config.secretKey}`
+    ).toString('base64');
+
+    const response = await fetch(`${this.config.baseUrl}/api/public/dataset-items?${queryParams}`, {
+      headers: {
+        'Authorization': authHeader,
+      },
+    });
+
+    if (!response.ok) {
+      await this.handleApiError(response, 'List Dataset Items');
+    }
+
+    return await response.json();
+  }
+
+  async getDatasetItem(itemId: string): Promise<any> {
+    const authHeader = 'Basic ' + Buffer.from(
+      `${this.config.publicKey}:${this.config.secretKey}`
+    ).toString('base64');
+
+    const response = await fetch(`${this.config.baseUrl}/api/public/dataset-items/${encodeURIComponent(itemId)}`, {
+      headers: {
+        'Authorization': authHeader,
+      },
+    });
+
+    if (!response.ok) {
+      await this.handleApiError(response, 'Get Dataset Item');
+    }
+
+    return await response.json();
+  }
+
+  async deleteDatasetItem(itemId: string): Promise<any> {
+    const authHeader = 'Basic ' + Buffer.from(
+      `${this.config.publicKey}:${this.config.secretKey}`
+    ).toString('base64');
+
+    const response = await fetch(`${this.config.baseUrl}/api/public/dataset-items/${encodeURIComponent(itemId)}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': authHeader,
+      },
+    });
+
+    if (!response.ok) {
+      await this.handleApiError(response, 'Delete Dataset Item');
+    }
+
+    return await response.json();
+  }
+
   async shutdown(): Promise<void> {
     await this.client.shutdownAsync();
   }

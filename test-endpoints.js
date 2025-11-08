@@ -24,6 +24,14 @@ import { listModels } from './build/tools/list-models.js';
 import { getModelDetail } from './build/tools/get-model-detail.js';
 import { listPrompts } from './build/tools/list-prompts.js';
 import { getPromptDetail } from './build/tools/get-prompt-detail.js';
+// Dataset management tools for testing
+import { createDataset } from './build/tools/create-dataset.js';
+import { listDatasets } from './build/tools/list-datasets.js';
+import { getDataset } from './build/tools/get-dataset.js';
+import { createDatasetItem } from './build/tools/create-dataset-item.js';
+import { listDatasetItems } from './build/tools/list-dataset-items.js';
+import { getDatasetItem } from './build/tools/get-dataset-item.js';
+import { deleteDatasetItem } from './build/tools/delete-dataset-item.js';
 
 const client = new LangfuseAnalyticsClient({
   id: 'test-project',
@@ -33,7 +41,7 @@ const client = new LangfuseAnalyticsClient({
 });
 
 async function runTests() {
-  console.log('🧪 Langfuse MCP Server - Enhanced Endpoint Tests (18 Total Tests)');
+  console.log('🧪 Langfuse MCP Server - Enhanced Endpoint Tests (25 Total Tests)');
   console.log('=' .repeat(60));
   console.log(`🔗 Testing against: ${client.getConfig().baseUrl}`);
   console.log(`📊 Project ID: ${client.getProjectId()}`);
@@ -342,6 +350,180 @@ async function runTests() {
     }
   } else {
     console.log('\\n1️⃣3️⃣ SKIPPED - get_prompt_detail (no prompt name available)');
+    failed++;
+  }
+
+  // Dataset Management Tests (New in v1.2.0)
+  console.log('\\n📦 DATASET MANAGEMENT TESTS (v1.2.0)');
+  console.log('=' .repeat(40));
+
+  let testDatasetName = `test-dataset-${Date.now()}`;
+  let createdDatasetItemId = null;
+
+  // Test 14: Create Dataset
+  console.log('\\n1️⃣4️⃣ Testing create_dataset...');
+  try {
+    const dataset = await createDataset(client, {
+      name: testDatasetName,
+      description: 'Test dataset created by automated tests',
+      metadata: { testRun: true, timestamp: new Date().toISOString() }
+    });
+    const datasetData = JSON.parse(dataset.content[0].text);
+
+    if (datasetData && datasetData.name === testDatasetName) {
+      console.log(`   ✅ PASS - Created dataset: ${datasetData.name}`);
+      console.log(`   ✅ PASS - Dataset ID: ${datasetData.id}`);
+      passed++;
+    } else {
+      console.log(`   ❌ FAIL - Invalid dataset creation response`);
+      failed++;
+    }
+  } catch (error) {
+    console.log(`   ❌ FAIL - Error: ${error.message}`);
+    failed++;
+  }
+
+  // Test 15: List Datasets
+  console.log('\\n1️⃣5️⃣ Testing list_datasets...');
+  try {
+    const datasets = await listDatasets(client, { limit: 10 });
+    const datasetsData = JSON.parse(datasets.content[0].text);
+
+    if (datasetsData && datasetsData.data && Array.isArray(datasetsData.data)) {
+      console.log(`   ✅ PASS - Retrieved ${datasetsData.data.length} datasets`);
+
+      // Check if our test dataset is in the list
+      const testDataset = datasetsData.data.find(d => d.name === testDatasetName);
+      if (testDataset) {
+        console.log(`   ✅ PASS - Test dataset found in list`);
+      } else {
+        console.log(`   ⚠️  WARN - Test dataset not yet visible in list (eventual consistency)`);
+      }
+      passed++;
+    } else {
+      console.log(`   ❌ FAIL - Invalid datasets list response`);
+      failed++;
+    }
+  } catch (error) {
+    console.log(`   ❌ FAIL - Error: ${error.message}`);
+    failed++;
+  }
+
+  // Test 16: Get Dataset
+  console.log('\\n1️⃣6️⃣ Testing get_dataset...');
+  try {
+    const dataset = await getDataset(client, { datasetName: testDatasetName });
+    const datasetData = JSON.parse(dataset.content[0].text);
+
+    if (datasetData && datasetData.name === testDatasetName) {
+      console.log(`   ✅ PASS - Retrieved dataset: ${datasetData.name}`);
+      console.log(`   ✅ PASS - Dataset metadata present: ${!!datasetData.metadata}`);
+      passed++;
+    } else {
+      console.log(`   ❌ FAIL - Invalid dataset retrieval response`);
+      failed++;
+    }
+  } catch (error) {
+    console.log(`   ❌ FAIL - Error: ${error.message}`);
+    failed++;
+  }
+
+  // Test 17: Create Dataset Item
+  console.log('\\n1️⃣7️⃣ Testing create_dataset_item...');
+  try {
+    const datasetItem = await createDatasetItem(client, {
+      datasetName: testDatasetName,
+      input: { prompt: "What is the capital of France?" },
+      expectedOutput: { answer: "Paris" },
+      metadata: { category: "geography", difficulty: "easy" }
+    });
+    const itemData = JSON.parse(datasetItem.content[0].text);
+
+    if (itemData && itemData.id && itemData.datasetName === testDatasetName) {
+      console.log(`   ✅ PASS - Created dataset item: ${itemData.id}`);
+      console.log(`   ✅ PASS - Item linked to dataset: ${itemData.datasetName}`);
+      createdDatasetItemId = itemData.id;
+      passed++;
+    } else {
+      console.log(`   ❌ FAIL - Invalid dataset item creation response`);
+      failed++;
+    }
+  } catch (error) {
+    console.log(`   ❌ FAIL - Error: ${error.message}`);
+    failed++;
+  }
+
+  // Test 18: List Dataset Items
+  console.log('\\n1️⃣8️⃣ Testing list_dataset_items...');
+  try {
+    const items = await listDatasetItems(client, { datasetName: testDatasetName, limit: 10 });
+    const itemsData = JSON.parse(items.content[0].text);
+
+    if (itemsData && itemsData.data && Array.isArray(itemsData.data)) {
+      console.log(`   ✅ PASS - Retrieved ${itemsData.data.length} dataset items`);
+
+      // Check if our test item is in the list
+      const testItem = itemsData.data.find(item => item.id === createdDatasetItemId);
+      if (testItem) {
+        console.log(`   ✅ PASS - Test dataset item found in list`);
+      } else {
+        console.log(`   ⚠️  WARN - Test dataset item not yet visible (eventual consistency)`);
+      }
+      passed++;
+    } else {
+      console.log(`   ❌ FAIL - Invalid dataset items list response`);
+      failed++;
+    }
+  } catch (error) {
+    console.log(`   ❌ FAIL - Error: ${error.message}`);
+    failed++;
+  }
+
+  // Test 19: Get Dataset Item
+  if (createdDatasetItemId) {
+    console.log('\\n1️⃣9️⃣ Testing get_dataset_item...');
+    try {
+      const item = await getDatasetItem(client, { itemId: createdDatasetItemId });
+      const itemData = JSON.parse(item.content[0].text);
+
+      if (itemData && itemData.id === createdDatasetItemId) {
+        console.log(`   ✅ PASS - Retrieved dataset item: ${itemData.id}`);
+        console.log(`   ✅ PASS - Item has input/output: ${!!itemData.input && !!itemData.expectedOutput}`);
+        passed++;
+      } else {
+        console.log(`   ❌ FAIL - Invalid dataset item retrieval response`);
+        failed++;
+      }
+    } catch (error) {
+      console.log(`   ❌ FAIL - Error: ${error.message}`);
+      failed++;
+    }
+  } else {
+    console.log('\\n1️⃣9️⃣ SKIPPED - get_dataset_item (no item ID available)');
+    failed++;
+  }
+
+  // Test 20: Delete Dataset Item (cleanup)
+  if (createdDatasetItemId) {
+    console.log('\\n2️⃣0️⃣ Testing delete_dataset_item...');
+    try {
+      const result = await deleteDatasetItem(client, { itemId: createdDatasetItemId });
+      const resultData = JSON.parse(result.content[0].text);
+
+      if (resultData && (resultData.success || resultData.message)) {
+        console.log(`   ✅ PASS - Deleted dataset item successfully`);
+        console.log(`   ✅ PASS - Cleanup completed`);
+        passed++;
+      } else {
+        console.log(`   ❌ FAIL - Invalid delete response`);
+        failed++;
+      }
+    } catch (error) {
+      console.log(`   ❌ FAIL - Error: ${error.message}`);
+      failed++;
+    }
+  } else {
+    console.log('\\n2️⃣0️⃣ SKIPPED - delete_dataset_item (no item to delete)');
     failed++;
   }
 
