@@ -1,13 +1,34 @@
 # Langfuse MCP Server
 
-An MCP server for querying Langfuse analytics, cost metrics, and usage data across multiple projects.
+**Version 1.1.0** - An MCP server for querying Langfuse analytics, cost metrics, and usage data across multiple projects.
 
 ## Features
 
-- Multi-project support with environment-based configuration
-- Cost and usage analytics by model, service, and environment
-- Trace analysis and debugging tools
-- Metrics API integration for aggregated analytics
+- **18 Comprehensive Tools** - Complete analytics, system management, and monitoring capabilities
+- **Multi-project Support** - Environment-based configuration with secure credential management
+- **Cost & Usage Analytics** - Detailed breakdowns by model, service, environment, and time periods
+- **Trace Analysis & Debugging** - Advanced filtering, search, and detailed trace inspection
+- **System Management** - Health monitoring, model management, and prompt template operations
+- **Metrics API Integration** - Server-side aggregation for optimal performance
+- **Real-time Testing** - Comprehensive test suite with dotenv integration
+
+## What's New in v1.1.0
+
+✅ **6 New System Management Tools**:
+- Observation detail retrieval with metadata
+- Health status monitoring and system checks
+- AI model listing and detailed model information
+- Prompt template management with versioning
+
+✅ **Enhanced Testing Infrastructure**:
+- Dotenv integration for secure credential management
+- 13 comprehensive tests against real Langfuse data
+- Automated CI/CD ready testing pipeline
+
+✅ **Improved Documentation**:
+- Comprehensive docs/ folder with architecture guides
+- Step-by-step developer workflows
+- Visual technical diagrams and system flows
 
 ## Installation
 
@@ -39,9 +60,9 @@ LANGFUSE_SECRET_KEY=sk-lf-xxx
 LANGFUSE_BASEURL=https://us.cloud.langfuse.com
 ```
 
-## Available Tools
+## Available Tools (18 Total)
 
-### Core Tools (original)
+### Core Analytics Tools (6)
 1. **list_projects** - List all configured Langfuse projects
 2. **project_overview** - Get cost, tokens, and trace summary for a project
 3. **usage_by_model** - Break down usage and cost by AI model
@@ -49,13 +70,21 @@ LANGFUSE_BASEURL=https://us.cloud.langfuse.com
 5. **top_expensive_traces** - Find the most expensive traces
 6. **get_trace_detail** - Get detailed information about a specific trace
 
-### Extended Tools (requested)
+### Extended Analytics Tools (6)
 7. **get_projects** - Alias for list_projects (list available Langfuse projects)
 8. **get_metrics** - Query aggregated metrics (costs, tokens, counts) with flexible filtering
 9. **get_traces** - Fetch traces with comprehensive filtering options
 10. **get_observations** - Get LLM generations/spans with details and filtering
 11. **get_cost_analysis** - Specialized cost breakdowns by model/user/daily trends
 12. **get_daily_metrics** - Daily usage trends and patterns with averages
+
+### System & Management Tools (6)
+13. **get_observation_detail** - Get detailed information about a specific observation/generation
+14. **get_health_status** - Monitor Langfuse system health and status
+15. **list_models** - List all AI models available in the project
+16. **get_model_detail** - Get detailed information about a specific AI model
+17. **list_prompts** - List all prompt templates with filtering and pagination
+18. **get_prompt_detail** - Get detailed information about a specific prompt template
 
 ## Usage with Claude Desktop
 
@@ -101,11 +130,25 @@ Add to your `claude_desktop_config.json`:
 
 Once integrated with Claude Desktop, you can ask questions like:
 
+### Analytics Queries
 - "Show me the cost overview for the last 7 days"
 - "Which AI models are most expensive this month?"
 - "Find the top 10 most expensive traces from yesterday"
 - "Break down usage by service for the production environment"
 - "Show me details for trace xyz-123"
+
+### System Management Queries
+- "Check the health status of my Langfuse system"
+- "List all available AI models in my project"
+- "Show me details for the GPT-4 model"
+- "What prompt templates do I have available?"
+- "Get details for the 'customer-support' prompt"
+
+### Advanced Analysis
+- "Show me detailed information for observation abc-123"
+- "What's the daily cost trend for the last month?"
+- "Find all traces that cost more than $0.10"
+- "Which users are generating the highest costs?"
 
 ## Development
 
@@ -116,9 +159,33 @@ npm run watch
 # Test with MCP Inspector
 npm run inspector
 
-# Test endpoints
+# Test endpoints (requires .env file)
 npm run test
 ```
+
+### Testing with Real Langfuse Data
+
+For comprehensive testing against real Langfuse data, create a `.env` file in the project root:
+
+```bash
+# .env file (never commit this - it's in .gitignore)
+LANGFUSE_PUBLIC_KEY=pk-lf-your-actual-public-key
+LANGFUSE_SECRET_KEY=sk-lf-your-actual-secret-key
+LANGFUSE_BASEURL=https://us.cloud.langfuse.com
+```
+
+The test suite (`npm run test`) will automatically load these credentials using dotenv and run 13 comprehensive tests against your actual Langfuse project:
+
+- ✅ Project overview with real cost/token data
+- ✅ Trace retrieval with server-side sorting
+- ✅ Top expensive traces analysis
+- ✅ Daily metrics aggregation
+- ✅ Cost analysis breakdowns
+- ✅ Health status monitoring
+- ✅ Model and prompt management
+- ✅ Observation detail retrieval
+
+**Note**: The `.env` file is automatically ignored by git to keep your credentials secure.
 
 ## Publishing to NPM
 
@@ -141,38 +208,74 @@ npx langfuse-mcp
 src/
 ├── index.ts              # Main server entry point
 ├── config.ts             # Project configuration loader
-├── langfuse-client.ts    # Langfuse client wrapper
+├── langfuse-client.ts    # Langfuse client wrapper with 18+ API methods
 ├── types.ts              # TypeScript type definitions
-└── tools/                # All 12 MCP tools
+└── tools/                # All 18 MCP tools
+    # Core Analytics Tools (6)
     ├── list-projects.ts
     ├── project-overview.ts
     ├── usage-by-model.ts
     ├── usage-by-service.ts
     ├── top-expensive-traces.ts
     ├── get-trace-detail.ts
+    # Extended Analytics Tools (6)
     ├── get-projects.ts          # Alias for list-projects
     ├── get-metrics.ts           # Aggregated metrics
     ├── get-traces.ts            # Trace filtering
     ├── get-observations.ts      # LLM generations
     ├── get-cost-analysis.ts     # Cost breakdowns
-    └── get-daily-metrics.ts     # Daily trends
+    ├── get-daily-metrics.ts     # Daily trends
+    # System & Management Tools (6)
+    ├── get-observation-detail.ts    # Observation details
+    ├── get-health-status.ts         # Health monitoring
+    ├── list-models.ts               # AI models listing
+    ├── get-model-detail.ts          # Model details
+    ├── list-prompts.ts              # Prompt templates
+    └── get-prompt-detail.ts         # Prompt details
+
+docs/                     # Comprehensive documentation
+├── ARCHITECTURE.md       # System design and patterns
+├── DEVELOPER_GUIDE.md    # Development workflows
+├── TECHNICAL_DIAGRAMS.md # Visual system flows
+├── IMPLEMENTATION_NOTES.md # API implementation details
+└── DOCUMENTATION_INDEX.md # Navigation guide
+
+test-endpoints.js         # Comprehensive test suite (13 tests)
 ```
 
 ## API Integration
 
-This server uses the Langfuse public API endpoints:
-- `/api/public/metrics` - For aggregated analytics using GET with JSON query parameter
-- `/api/public/metrics/daily` - For daily usage metrics and cost breakdowns
-- `/api/public/traces` - For trace listing, filtering, and individual trace retrieval
-- `/api/public/observations` - For detailed observation analysis and LLM generation metrics
+This server integrates with multiple Langfuse public API endpoints:
+
+### Core Analytics APIs
+- `/api/public/metrics` - Aggregated analytics using GET with JSON query parameter
+- `/api/public/metrics/daily` - Daily usage metrics and cost breakdowns
+- `/api/public/traces` - Trace listing, filtering, and individual trace retrieval
+- `/api/public/observations` - Detailed observation analysis and LLM generation metrics
+
+### System Management APIs
+- `/api/public/observations/{id}` - Individual observation details and metadata
+- `/api/public/health` - System health status and monitoring
+- `/api/public/models` - AI model listing and configuration
+- `/api/public/prompts` - Prompt template management and versioning
 
 **API Implementation Notes**:
 - **Metrics API**: Uses GET method with URL-encoded JSON in the `query` parameter
 - **Traces API**: Supports advanced filtering, pagination, and ordering
 - **Observations API**: Provides detailed LLM generation and span data
 - **Daily Metrics API**: Specialized endpoint for daily aggregated usage statistics
+- **Health API**: Simple endpoint for system status monitoring
+- **Models/Prompts APIs**: Support pagination, filtering, and detailed retrieval
 
 All authentication is handled server-side using Basic Auth with your Langfuse API keys.
+
+### Documentation
+
+For detailed architecture, development guides, and technical diagrams, see the [comprehensive documentation](docs/):
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design, patterns, and implementation details
+- **[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** - Development workflows and common tasks
+- **[docs/TECHNICAL_DIAGRAMS.md](docs/TECHNICAL_DIAGRAMS.md)** - Visual system flows and component diagrams
+- **[docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** - Complete navigation guide
 
 ## Troubleshooting
 
