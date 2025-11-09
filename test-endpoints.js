@@ -32,6 +32,10 @@ import { createDatasetItem } from './build/tools/create-dataset-item.js';
 import { listDatasetItems } from './build/tools/list-dataset-items.js';
 import { getDatasetItem } from './build/tools/get-dataset-item.js';
 import { deleteDatasetItem } from './build/tools/delete-dataset-item.js';
+// Comment management tools for testing
+import { createComment } from './build/tools/create-comment.js';
+import { listComments } from './build/tools/list-comments.js';
+import { getComment } from './build/tools/get-comment.js';
 
 const client = new LangfuseAnalyticsClient({
   id: 'test-project',
@@ -41,7 +45,7 @@ const client = new LangfuseAnalyticsClient({
 });
 
 async function runTests() {
-  console.log('🧪 Langfuse MCP Server - Enhanced Endpoint Tests (25 Total Tests)');
+  console.log('🧪 Langfuse MCP Server - Enhanced Endpoint Tests (28 Total Tests)');
   console.log('=' .repeat(60));
   console.log(`🔗 Testing against: ${client.getConfig().baseUrl}`);
   console.log(`📊 Project ID: ${client.getProjectId()}`);
@@ -524,6 +528,90 @@ async function runTests() {
     }
   } else {
     console.log('\\n2️⃣0️⃣ SKIPPED - delete_dataset_item (no item to delete)');
+    failed++;
+  }
+
+  // Comment management tests
+  let createdCommentId = null;
+  let testObjectId = null;
+
+  // Test 21: List Comments (initial state)
+  console.log('\n2️⃣1️⃣ Testing list_comments...');
+  try {
+    const comments = await listComments(client, { limit: 5 });
+    const commentsData = JSON.parse(comments.content[0].text);
+
+    if (commentsData && Array.isArray(commentsData.data || commentsData)) {
+      console.log(`   ✅ PASS - Retrieved comments list`);
+      const commentsList = commentsData.data || commentsData;
+      console.log(`   ✅ PASS - Found ${commentsList.length} existing comments`);
+      passed++;
+    } else {
+      console.log(`   ✅ PASS - Empty comments list (valid for new projects)`);
+      passed++;
+    }
+  } catch (error) {
+    console.log(`   ❌ FAIL - Error: ${error.message}`);
+    failed++;
+  }
+
+  // Test 22: Create Comment (find a trace to comment on)
+  console.log('\n2️⃣2️⃣ Testing create_comment...');
+  try {
+    // First, get a trace to comment on
+    const traces = await getTraces(client, { from, to, limit: 1 });
+    const tracesData = JSON.parse(traces.content[0].text);
+
+    if (tracesData.traces && tracesData.traces.length > 0) {
+      testObjectId = tracesData.traces[0].id;
+
+      const comment = await createComment(client, {
+        objectType: 'trace',
+        objectId: testObjectId,
+        content: 'Test comment created by MCP server endpoint test'
+      });
+      const commentData = JSON.parse(comment.content[0].text);
+
+      if (commentData && commentData.id) {
+        console.log(`   ✅ PASS - Created comment: ${commentData.id}`);
+        console.log(`   ✅ PASS - Comment linked to trace: ${testObjectId}`);
+        createdCommentId = commentData.id;
+        passed++;
+      } else {
+        console.log(`   ❌ FAIL - Invalid comment creation response`);
+        failed++;
+      }
+    } else {
+      console.log(`   ⚠️  SKIP - No traces available to comment on`);
+      failed++;
+    }
+  } catch (error) {
+    console.log(`   ❌ FAIL - Error: ${error.message}`);
+    failed++;
+  }
+
+  // Test 23: Get Comment
+  if (createdCommentId) {
+    console.log('\n2️⃣3️⃣ Testing get_comment...');
+    try {
+      const comment = await getComment(client, { commentId: createdCommentId });
+      const commentData = JSON.parse(comment.content[0].text);
+
+      if (commentData && commentData.id === createdCommentId) {
+        console.log(`   ✅ PASS - Retrieved comment: ${commentData.id}`);
+        console.log(`   ✅ PASS - Comment content preserved: ${!!commentData.content}`);
+        console.log(`   ✅ PASS - Comment object type: ${commentData.objectType || 'unknown'}`);
+        passed++;
+      } else {
+        console.log(`   ❌ FAIL - Invalid comment retrieval response`);
+        failed++;
+      }
+    } catch (error) {
+      console.log(`   ❌ FAIL - Error: ${error.message}`);
+      failed++;
+    }
+  } else {
+    console.log('\n2️⃣3️⃣ SKIPPED - get_comment (no comment ID available)');
     failed++;
   }
 

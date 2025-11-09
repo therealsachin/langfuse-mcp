@@ -519,6 +519,88 @@ export class LangfuseAnalyticsClient {
     return await response.json();
   }
 
+  // Comment management methods
+  async createComment(params: {
+    objectType: 'trace' | 'observation' | 'session' | 'prompt';
+    objectId: string;
+    content: string;
+    authorUserId?: string;
+  }): Promise<any> {
+    const authHeader = 'Basic ' + Buffer.from(
+      `${this.config.publicKey}:${this.config.secretKey}`
+    ).toString('base64');
+
+    const requestBody = {
+      ...params,
+      projectId: this.config.id, // Add projectId to the request
+    };
+
+    const response = await fetch(`${this.config.baseUrl}/api/public/comments`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      await this.handleApiError(response, 'Create Comment');
+    }
+
+    return await response.json();
+  }
+
+  async listComments(params: {
+    page?: number;
+    limit?: number;
+    objectType?: 'trace' | 'observation' | 'session' | 'prompt';
+    objectId?: string;
+    authorUserId?: string;
+  } = {}): Promise<any> {
+    const queryParams = new URLSearchParams();
+
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.objectType) queryParams.append('objectType', params.objectType);
+    if (params.objectId) queryParams.append('objectId', params.objectId);
+    if (params.authorUserId) queryParams.append('authorUserId', params.authorUserId);
+
+    const authHeader = 'Basic ' + Buffer.from(
+      `${this.config.publicKey}:${this.config.secretKey}`
+    ).toString('base64');
+
+    const response = await fetch(`${this.config.baseUrl}/api/public/comments?${queryParams}`, {
+      headers: {
+        'Authorization': authHeader,
+      },
+    });
+
+    if (!response.ok) {
+      await this.handleApiError(response, 'List Comments');
+    }
+
+    return await response.json();
+  }
+
+  async getComment(commentId: string): Promise<any> {
+    const authHeader = 'Basic ' + Buffer.from(
+      `${this.config.publicKey}:${this.config.secretKey}`
+    ).toString('base64');
+
+    const response = await fetch(`${this.config.baseUrl}/api/public/comments/${encodeURIComponent(commentId)}`, {
+      headers: {
+        'Authorization': authHeader,
+      },
+    });
+
+    if (!response.ok) {
+      await this.handleApiError(response, 'Get Comment');
+    }
+
+    return await response.json();
+  }
+
   async shutdown(): Promise<void> {
     await this.client.shutdownAsync();
   }

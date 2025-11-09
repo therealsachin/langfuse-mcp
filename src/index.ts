@@ -38,6 +38,10 @@ import { createDatasetItem, createDatasetItemSchema } from './tools/create-datas
 import { listDatasetItems, listDatasetItemsSchema } from './tools/list-dataset-items.js';
 import { getDatasetItem, getDatasetItemSchema } from './tools/get-dataset-item.js';
 import { deleteDatasetItem, deleteDatasetItemSchema } from './tools/delete-dataset-item.js';
+// Comment management tools
+import { createComment, createCommentSchema } from './tools/create-comment.js';
+import { listComments, listCommentsSchema } from './tools/list-comments.js';
+import { getComment, getCommentSchema } from './tools/get-comment.js';
 
 class LangfuseAnalyticsServer {
   private server: Server;
@@ -701,6 +705,80 @@ class LangfuseAnalyticsServer {
             required: ['itemId'],
           },
         },
+        // Comment management tools
+        {
+          name: 'create_comment',
+          description: 'Create a new comment on traces, observations, sessions, or prompts.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              objectType: {
+                type: 'string',
+                enum: ['trace', 'observation', 'session', 'prompt'],
+                description: 'The type of object to comment on',
+              },
+              objectId: {
+                type: 'string',
+                description: 'The unique identifier of the object to comment on',
+              },
+              content: {
+                type: 'string',
+                description: 'The content/text of the comment',
+              },
+              authorUserId: {
+                type: 'string',
+                description: 'The user ID of the comment author (optional)',
+              },
+            },
+            required: ['objectType', 'objectId', 'content'],
+          },
+        },
+        {
+          name: 'list_comments',
+          description: 'List comments with filtering options for objects and users.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              page: {
+                type: 'number',
+                description: 'Page number for pagination (starts at 1)',
+              },
+              limit: {
+                type: 'number',
+                minimum: 1,
+                maximum: 100,
+                description: 'Maximum number of comments to return (max 100)',
+              },
+              objectType: {
+                type: 'string',
+                enum: ['trace', 'observation', 'session', 'prompt'],
+                description: 'Filter comments by object type',
+              },
+              objectId: {
+                type: 'string',
+                description: 'Filter comments by specific object ID',
+              },
+              authorUserId: {
+                type: 'string',
+                description: 'Filter comments by author user ID',
+              },
+            },
+          },
+        },
+        {
+          name: 'get_comment',
+          description: 'Get detailed information about a specific comment.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              commentId: {
+                type: 'string',
+                description: 'The unique identifier of the comment to retrieve',
+              },
+            },
+            required: ['commentId'],
+          },
+        },
       ],
     }));
 
@@ -834,6 +912,22 @@ class LangfuseAnalyticsServer {
           case 'delete_dataset_item': {
             const args = deleteDatasetItemSchema.parse(request.params.arguments);
             return await deleteDatasetItem(this.client, args);
+          }
+
+          // Comment management tools
+          case 'create_comment': {
+            const args = createCommentSchema.parse(request.params.arguments);
+            return await createComment(this.client, args);
+          }
+
+          case 'list_comments': {
+            const args = listCommentsSchema.parse(request.params.arguments);
+            return await listComments(this.client, args);
+          }
+
+          case 'get_comment': {
+            const args = getCommentSchema.parse(request.params.arguments);
+            return await getComment(this.client, args);
           }
 
           default:

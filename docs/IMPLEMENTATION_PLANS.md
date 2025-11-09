@@ -2,41 +2,41 @@
 
 This document tracks the implementation status and future roadmap for the Langfuse MCP Server, helping prioritize development efforts and track progress toward complete API coverage.
 
-## 📊 Current Status (v1.2.0)
+## 📊 Current Status (v1.3.0)
 
-**Total Implemented Tools: 25**
+**Total Implemented Tools: 28**
 - ✅ Core Analytics Tools: 6
 - ✅ Extended Analytics Tools: 6
 - ✅ System & Management Tools: 6
 - ✅ Dataset Management Tools: 7 ⭐ **COMPLETED in v1.2.0**
+- ✅ Comment Management Tools: 3 ⭐ **COMPLETED in v1.3.0**
 
-**API Coverage: ~45% of full Langfuse API**
+**API Coverage: ~50% of full Langfuse API**
 
 ## 🎯 Remaining Implementation Phases
 
-### 🔴 **Phase 1: Core Collaboration (v1.3.0)**
+### 🔴 **Phase 1: Core Collaboration (v1.3.0)** ⭐ **COMPLETED**
 **Priority:** ⭐⭐⭐⭐⭐ **HIGHEST**
 **Timeline:** 2-3 weeks
 **Business Impact:** Critical for team workflows
 
-#### **Comments System (3 tools)**
-- [ ] `create_comment` - Add comments to traces/observations/sessions/prompts
+#### **Comments System (3 tools)** ✅ **COMPLETED**
+- ✅ `create_comment` - Add comments to traces/observations/sessions/prompts
   - **API:** `POST /api/public/comments`
-  - **Params:** objectType, objectId, content, authorUserId
-- [ ] `list_comments` - Get comments with filtering
+  - **Params:** objectType, objectId, content, authorUserId, projectId
+- ✅ `list_comments` - Get comments with filtering
   - **API:** `GET /api/public/comments`
   - **Filters:** objectType, objectId, authorUserId, pagination
-- [ ] `get_comment` - Get individual comment details
+- ✅ `get_comment` - Get individual comment details
   - **API:** `GET /api/public/comments/{commentId}`
 
-#### **Session Management (2 tools)**
-- [ ] `list_sessions` - Get sessions with filtering
-  - **API:** `GET /api/public/sessions`
-  - **Filters:** fromTimestamp, toTimestamp, environment, pagination
-- [ ] `get_session` - Get session details with traces
-  - **API:** `GET /api/public/sessions/{sessionId}`
+#### **Session Management (2 tools)** ❌ **NOT AVAILABLE**
+*Analysis revealed that Langfuse API does not include dedicated session endpoints*
+- ❌ `list_sessions` - API endpoint does not exist
+- ❌ `get_session` - API endpoint does not exist
+- 📝 **Note:** Session data is handled through trace/observation entities
 
-**Phase 1 Total: 5 new tools (25 → 30 total)**
+**Phase 1 Total: 3 new tools (25 → 28 total)**
 
 ---
 
@@ -158,19 +158,18 @@ This document tracks the implementation status and future roadmap for the Langfu
 - [x] **v1.0.0** - Initial implementation (18 tools)
 - [x] **v1.1.0** - Enhanced testing and documentation
 - [x] **v1.2.0** - Dataset Management (7 new tools) ✅ **COMPLETED**
+- [x] **v1.3.0** - Comment Management (3 new tools) ✅ **COMPLETED**
 
 ### **Upcoming Phases**
-- [ ] **v1.3.0** - Core Collaboration (5 new tools)
 - [ ] **v1.4.0** - Advanced Workflows (15 new tools)
 - [ ] **v1.5.0** - Complete CRUD (8 new tools)
 - [ ] **v2.0.0** - Enterprise Features (12+ new tools)
 
 ### **Target Metrics**
-- **Current API Coverage:** ~45% (25/55+ possible tools)
-- **v1.3.0 Target:** ~55% (30/55+ tools)
-- **v1.4.0 Target:** ~80% (45/55+ tools)
-- **v1.5.0 Target:** ~95% (53/55+ tools)
-- **v2.0.0 Target:** ~98% (65+/65+ tools)
+- **Current API Coverage:** ~50% (28/55+ possible tools)
+- **v1.4.0 Target:** ~80% (43/55+ tools)
+- **v1.5.0 Target:** ~95% (51/55+ tools)
+- **v2.0.0 Target:** ~98% (63+/65+ tools)
 
 ## 🎯 **Implementation Strategy**
 
@@ -187,11 +186,11 @@ This document tracks the implementation status and future roadmap for the Langfu
 - **Documentation** - Update docs with each release
 
 ### **Next Recommended Phase**
-**Phase 1 (Comments & Sessions)** because:
-- ⭐ **Highest immediate business value**
-- 🔧 **Relatively simple implementation**
-- 👥 **Enables team collaboration workflows**
-- 📊 **Complements existing dataset functionality**
+**Phase 2 (Annotation Queues & Score Management)** because:
+- ⭐ **High business value for ML evaluation workflows**
+- 🔧 **Builds on existing dataset functionality**
+- 👥 **Enables advanced team collaboration**
+- 📊 **Critical for ML model evaluation and improvement**
 
 ## 📝 **Notes**
 
@@ -203,5 +202,5 @@ This document tracks the implementation status and future roadmap for the Langfu
 
 ---
 
-**Last Updated:** November 9, 2024 (v1.2.0 completion)
-**Next Target:** Phase 1 - Core Collaboration (v1.3.0)
+**Last Updated:** November 9, 2024 (v1.3.0 completion)
+**Next Target:** Phase 2 - Advanced Workflows (v1.4.0)
