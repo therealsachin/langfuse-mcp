@@ -1,4 +1,5 @@
-import { LangfuseProjectConfig } from './types.js';
+import { LangfuseProjectConfig, ServerMode, ServerModeConfig } from './types.js';
+import { getServerMode, getModeConfig } from './mode-config.js';
 
 export function getProjectConfig(): LangfuseProjectConfig {
   const publicKey = process.env.LANGFUSE_PUBLIC_KEY;
@@ -20,4 +21,20 @@ export function getProjectConfig(): LangfuseProjectConfig {
     publicKey,
     secretKey,
   };
+}
+
+/**
+ * Get the current server mode configuration.
+ * This is the primary function for initializing mode-aware MCP server behavior.
+ */
+export function getServerModeConfig(): ServerModeConfig {
+  const mode = getServerMode();
+  return getModeConfig(mode);
+}
+
+/**
+ * Get just the server mode (for convenience).
+ */
+export function getCurrentServerMode(): ServerMode {
+  return getServerMode();
 }

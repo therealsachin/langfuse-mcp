@@ -3,6 +3,7 @@ import { LangfuseAnalyticsClient } from '../langfuse-client.js';
 
 export const deleteDatasetItemSchema = z.object({
   itemId: z.string().min(1).describe('ID of the dataset item to delete'),
+  confirmed: z.boolean().optional().describe('Set to true to confirm you want to permanently delete this item'),
 });
 
 export type DeleteDatasetItemArgs = z.infer<typeof deleteDatasetItemSchema>;

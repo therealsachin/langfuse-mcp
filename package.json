@@ -1,7 +1,7 @@
 {
   "name": "@therealsachin/langfuse-mcp-server",
-  "version": "1.3.0",
-  "description": "MCP server for Langfuse analytics and cost monitoring with comprehensive metrics, traces, and cost analysis",
+  "version": "1.4.1",
+  "description": "MCP server for Langfuse analytics and cost monitoring with readonly/readwrite modes via CLI flags for secure npx deployment",
   "type": "module",
   "main": "build/index.js",
   "bin": {

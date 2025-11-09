@@ -1,42 +1,65 @@
 # Langfuse MCP Server
 
-**Version 1.1.0** - An MCP server for querying Langfuse analytics, cost metrics, and usage data across multiple projects.
+**Version 1.4.0** - A secure MCP server for Langfuse analytics with dual readonly/readwrite modes for safe operation.
+
+## 🔒 Security-First Design (New in v1.4.0)
+
+- **Dual Operation Modes** - Safe readonly mode by default, explicit opt-in for write operations
+- **Triple-Layer Security** - Environment, tool list, and runtime validation
+- **Write Tool Prefixing** - Clear `write_*` prefixes for all data modification operations
+- **Confirmation Prompts** - Required confirmation for destructive operations
+- **Comprehensive Audit Logging** - All write operations logged for compliance and security
 
 ## Features
 
-- **18 Comprehensive Tools** - Complete analytics, system management, and monitoring capabilities
-- **Multi-project Support** - Environment-based configuration with secure credential management
+- **32+ Comprehensive Tools** - Complete analytics, dataset management, and comment collaboration
+- **Secure Mode System** - Readonly (default) and readwrite modes with explicit opt-in
 - **Cost & Usage Analytics** - Detailed breakdowns by model, service, environment, and time periods
+- **Dataset Management** - Create, organize, and manage test datasets with validation examples
+- **Comment Collaboration** - Add comments to traces, observations, sessions, and prompts
 - **Trace Analysis & Debugging** - Advanced filtering, search, and detailed trace inspection
 - **System Management** - Health monitoring, model management, and prompt template operations
-- **Metrics API Integration** - Server-side aggregation for optimal performance
-- **Real-time Testing** - Comprehensive test suite with dotenv integration
+- **Real-time Testing** - Comprehensive test suite with mode validation
 
-## What's New in v1.1.0
+## What's New in v1.4.0
 
-✅ **6 New System Management Tools**:
-- Observation detail retrieval with metadata
-- Health status monitoring and system checks
-- AI model listing and detailed model information
-- Prompt template management with versioning
+🔒 **Security & Mode System**:
+- Readonly mode by default - only read operations allowed
+- Readwrite mode with explicit opt-in for data modification
+- Write tool prefixing (`write_create_dataset`, `write_delete_dataset_item`, etc.)
+- Confirmation prompts for destructive operations
+- Comprehensive audit logging for all write operations
 
-✅ **Enhanced Testing Infrastructure**:
-- Dotenv integration for secure credential management
-- 13 comprehensive tests against real Langfuse data
-- Automated CI/CD ready testing pipeline
+🛠️ **Enhanced Functionality**:
+- 32+ tools across analytics, dataset management, and collaboration
+- Dual CLI entrypoints: `langfuse-mcp-ro` and `langfuse-mcp-server`
+- Legacy tool support during transition period
+- Mode-aware tool filtering and descriptions
 
-✅ **Improved Documentation**:
-- Comprehensive docs/ folder with architecture guides
-- Step-by-step developer workflows
-- Visual technical diagrams and system flows
+✅ **Production Ready**:
+- Triple-layer security validation
+- Extensive test coverage including mode validation
+- Clean error messages and user guidance
+- Structured audit logs for compliance
 
 ## Installation
 
 ### Option 1: Using npx (Recommended)
 
+**Read-Only Mode (Safe Default):**
 ```bash
-# No installation needed - run directly with npx
+# Only analytics and read operations - safe for most users
 npx @therealsachin/langfuse-mcp-server
+# OR explicitly use readonly binary
+langfuse-mcp-ro
+```
+
+**Read-Write Mode (Explicit Opt-in):**
+```bash
+# ⚠️ Enables write operations - can modify your Langfuse data
+LANGFUSE_MCP_MODE=readwrite npx @therealsachin/langfuse-mcp-server
+# OR use readwrite binary
+langfuse-mcp-server
 ```
 
 ### Option 2: Local Development
@@ -46,9 +69,17 @@ git clone https://github.com/therealsachin/langfuse-mcp.git
 cd langfuse-mcp
 npm install
 npm run build
+
+# Test readonly mode
+LANGFUSE_MCP_MODE=readonly node build/index.js
+
+# Test readwrite mode
+LANGFUSE_MCP_MODE=readwrite node build/index.js
 ```
 
 ## Configuration
+
+### Basic Configuration
 
 Set environment variables for each Langfuse project:
 
@@ -56,6 +87,68 @@ Set environment variables for each Langfuse project:
 LANGFUSE_PUBLIC_KEY=pk-lf-xxx
 LANGFUSE_SECRET_KEY=sk-lf-xxx
 LANGFUSE_BASEURL=https://us.cloud.langfuse.com
+```
+
+### Mode Configuration (New in v1.4.1)
+
+Control server operation mode using CLI flags or environment variables:
+
+**CLI Flags (Recommended for npx usage):**
+```bash
+# Read-only mode (default, safe)
+npx @therealsachin/langfuse-mcp-server
+
+# Read-write mode (explicit opt-in)
+npx @therealsachin/langfuse-mcp-server --readwrite
+
+# Alternative explicit flag syntax
+npx @therealsachin/langfuse-mcp-server --mode=readonly
+npx @therealsachin/langfuse-mcp-server --mode=readwrite
+```
+
+**Environment Variables (Legacy support):**
+```bash
+# Readonly mode (default, safe)
+LANGFUSE_MCP_MODE=readonly
+
+# Readwrite mode (explicit opt-in)
+LANGFUSE_MCP_MODE=readwrite
+```
+
+### Claude Desktop Configuration
+
+**Read-Only Mode (Recommended for most users):**
+```json
+{
+  "mcpServers": {
+    "langfuse": {
+      "command": "npx",
+      "args": ["@therealsachin/langfuse-mcp-server"],
+      "env": {
+        "LANGFUSE_PUBLIC_KEY": "pk-lf-your-key",
+        "LANGFUSE_SECRET_KEY": "sk-lf-your-secret",
+        "LANGFUSE_BASEURL": "https://us.cloud.langfuse.com"
+      }
+    }
+  }
+}
+```
+
+**Read-Write Mode (Advanced users only):**
+```json
+{
+  "mcpServers": {
+    "langfuse": {
+      "command": "npx",
+      "args": ["@therealsachin/langfuse-mcp-server", "--readwrite"],
+      "env": {
+        "LANGFUSE_PUBLIC_KEY": "pk-lf-your-key",
+        "LANGFUSE_SECRET_KEY": "sk-lf-your-secret",
+        "LANGFUSE_BASEURL": "https://us.cloud.langfuse.com"
+      }
+    }
+  }
+}
 ```
 
 ## 🔒 Security Best Practices

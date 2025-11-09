@@ -1,13 +1,52 @@
 #!/usr/bin/env node
 
+// Parse command line arguments for mode selection
+function parseCommandLineMode(): 'readonly' | 'readwrite' | null {
+  const args = process.argv.slice(2);
+
+  // Check for explicit mode flag: --mode=readonly or --mode=readwrite
+  const modeFlag = args.find(arg => arg.startsWith('--mode='));
+  if (modeFlag) {
+    const mode = modeFlag.split('=')[1]?.toLowerCase();
+    if (mode === 'readonly' || mode === 'readwrite') {
+      return mode;
+    }
+  }
+
+  // Check for readwrite flag: --readwrite
+  if (args.includes('--readwrite') || args.includes('--rw')) {
+    return 'readwrite';
+  }
+
+  // Check for readonly flag: --readonly or --ro (explicit readonly)
+  if (args.includes('--readonly') || args.includes('--ro')) {
+    return 'readonly';
+  }
+
+  // No explicit mode specified via CLI
+  return null;
+}
+
+// Set mode based on CLI args, fallback to environment variables, default to readonly
+const cliMode = parseCommandLineMode();
+if (cliMode) {
+  process.env.LANGFUSE_MCP_MODE = cliMode;
+} else if (!process.env.LANGFUSE_MCP_MODE) {
+  // Safe default: readonly mode if no explicit configuration
+  process.env.LANGFUSE_MCP_MODE = 'readonly';
+}
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { getProjectConfig } from './config.js';
+import { getProjectConfig, getServerModeConfig, getCurrentServerMode } from './config.js';
 import { LangfuseAnalyticsClient } from './langfuse-client.js';
+import { ServerMode, ServerModeConfig } from './types.js';
+import { isToolAllowed, isWriteTool, assertWriteEnabled, validateConfirmation } from './mode-config.js';
+import { AuditLogger } from './audit-logger.js';
 
 // Import tool handlers
 import { listProjects, listProjectsSchema } from './tools/list-projects.js';
@@ -46,12 +85,20 @@ import { getComment, getCommentSchema } from './tools/get-comment.js';
 class LangfuseAnalyticsServer {
   private server: Server;
   private client: LangfuseAnalyticsClient;
+  private mode: ServerMode;
+  private modeConfig: ServerModeConfig;
+  private auditLogger: AuditLogger;
 
   constructor() {
+    // Initialize mode configuration
+    this.mode = getCurrentServerMode();
+    this.modeConfig = getServerModeConfig();
+    this.auditLogger = AuditLogger.getInstance();
+
     this.server = new Server(
       {
-        name: 'langfuse-analytics',
-        version: '0.1.0',
+        name: `langfuse-analytics-${this.mode}`,
+        version: '1.4.0',
       },
       {
         capabilities: {
@@ -64,8 +111,25 @@ class LangfuseAnalyticsServer {
     const config = getProjectConfig();
     this.client = new LangfuseAnalyticsClient(config);
 
+    // Log mode initialization
+    this.logModeStartup();
+
     this.setupHandlers();
     this.setupErrorHandling();
+  }
+
+  private logModeStartup(): void {
+    console.error(`🔒 Langfuse MCP Server v1.4.0 - Running in ${this.mode.toUpperCase()} mode`);
+    if (this.mode === 'readonly') {
+      console.error('   ✅ Only read operations allowed. This is the safe default mode.');
+      console.error('   💡 Set LANGFUSE_MCP_MODE=readwrite to enable write operations.');
+    } else {
+      console.error('   ⚠️  Write operations enabled - this can modify your Langfuse data.');
+      console.error('   📝 All write operations will be logged for audit purposes.');
+    }
+
+    // Log to audit logger
+    this.auditLogger.logModeInitialization(this.mode, this.modeConfig.allowedTools.size);
   }
 
   private setupErrorHandling(): void {
@@ -80,9 +144,9 @@ class LangfuseAnalyticsServer {
   }
 
   private setupHandlers(): void {
-    // List tools handler
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: [
+    // List tools handler - filter tools based on current mode
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      const allTools = [
         {
           name: 'list_projects',
           description: 'List configured Langfuse projects available to this MCP server.',
@@ -693,13 +757,17 @@ class LangfuseAnalyticsServer {
         },
         {
           name: 'delete_dataset_item',
-          description: 'Delete a dataset item permanently from the dataset.',
+          description: '⚠️ DESTRUCTIVE: Delete a dataset item permanently from the dataset.',
           inputSchema: {
             type: 'object',
             properties: {
               itemId: {
                 type: 'string',
                 description: 'ID of the dataset item to delete',
+              },
+              confirmed: {
+                type: 'boolean',
+                description: 'Set to true to confirm you want to permanently delete this item',
               },
             },
             required: ['itemId'],
@@ -779,13 +847,156 @@ class LangfuseAnalyticsServer {
             required: ['commentId'],
           },
         },
-      ],
-    }));
+        // Write operations with clear prefixing (New in v1.4.0)
+        {
+          name: 'write_create_dataset',
+          description: 'Create a new dataset for organizing test data and examples. This write operation will modify your Langfuse project.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              name: {
+                type: 'string',
+                description: 'Name of the dataset',
+              },
+              description: {
+                type: 'string',
+                description: 'Description of the dataset',
+              },
+              metadata: {
+                type: 'object',
+                description: 'Additional metadata for the dataset',
+              },
+            },
+            required: ['name'],
+          },
+        },
+        {
+          name: 'write_create_dataset_item',
+          description: 'Add an item to a dataset with input/output examples. This write operation will modify your Langfuse project.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              datasetName: {
+                type: 'string',
+                description: 'Name of the dataset to add the item to',
+              },
+              input: {
+                description: 'Input data for the dataset item',
+              },
+              expectedOutput: {
+                description: 'Expected output for the dataset item',
+              },
+              sourceTraceId: {
+                type: 'string',
+                description: 'Optional source trace ID to link this item',
+              },
+              sourceObservationId: {
+                type: 'string',
+                description: 'Optional source observation ID to link this item',
+              },
+              metadata: {
+                type: 'object',
+                description: 'Additional metadata for the item',
+              },
+              status: {
+                type: 'string',
+                enum: ['ACTIVE', 'ARCHIVED'],
+                description: 'Status of the dataset item',
+              },
+            },
+            required: ['datasetName', 'input'],
+          },
+        },
+        {
+          name: 'write_delete_dataset_item',
+          description: '⚠️ DESTRUCTIVE: Permanently delete a dataset item. This write operation cannot be undone.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              itemId: {
+                type: 'string',
+                description: 'The unique identifier of the dataset item to delete',
+              },
+              confirmed: {
+                type: 'boolean',
+                description: 'Set to true to confirm you want to permanently delete this item',
+              },
+            },
+            required: ['itemId'],
+          },
+        },
+        {
+          name: 'write_create_comment',
+          description: 'Create a comment on a trace, observation, session, or prompt. This write operation will modify your Langfuse project.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              objectType: {
+                type: 'string',
+                enum: ['trace', 'observation', 'session', 'prompt'],
+                description: 'Type of object to comment on',
+              },
+              objectId: {
+                type: 'string',
+                description: 'ID of the object to comment on',
+              },
+              content: {
+                type: 'string',
+                description: 'Content of the comment',
+              },
+              authorUserId: {
+                type: 'string',
+                description: 'Optional author user ID (defaults to API key user)',
+              },
+            },
+            required: ['objectType', 'objectId', 'content'],
+          },
+        },
+      ];
 
-    // Call tool handler
+      // Filter tools based on current mode
+      const allowedTools = allTools.filter(tool =>
+        isToolAllowed(tool.name, this.modeConfig)
+      );
+
+      // Add mode indicators to tool descriptions
+      const enhancedTools = allowedTools.map(tool => {
+        if (isWriteTool(tool.name) && this.mode === 'readwrite') {
+          return {
+            ...tool,
+            description: `🔴 [WRITE] ${tool.description}`
+          };
+        }
+        return tool;
+      });
+
+      console.error(`📊 Exposing ${enhancedTools.length}/${allTools.length} tools in ${this.mode} mode`);
+
+      return { tools: enhancedTools };
+    });
+
+    // Call tool handler with mode validation
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const startTime = Date.now();
+      const toolName = request.params.name;
+
       try {
-        switch (request.params.name) {
+        // Runtime mode validation (defense in depth)
+        if (!isToolAllowed(toolName, this.modeConfig)) {
+          this.auditLogger.logPermissionDenied(toolName, this.mode);
+          throw new Error(
+            `Permission denied: "${toolName}" requires read-write mode. ` +
+            `This server is running in ${this.mode} mode. ` +
+            `Set LANGFUSE_MCP_MODE=readwrite to enable write operations.`
+          );
+        }
+
+        // Log start of write operations
+        if (isWriteTool(toolName)) {
+          this.auditLogger.logOperationStart(toolName, request.params.arguments || {});
+        }
+
+        switch (toolName) {
           case 'list_projects': {
             const args = listProjectsSchema.parse(request.params.arguments);
             return await listProjects(this.client);
@@ -911,6 +1122,8 @@ class LangfuseAnalyticsServer {
 
           case 'delete_dataset_item': {
             const args = deleteDatasetItemSchema.parse(request.params.arguments);
+            // Validate confirmation for destructive operation
+            validateConfirmation(toolName, args.confirmed);
             return await deleteDatasetItem(this.client, args);
           }
 
@@ -930,11 +1143,51 @@ class LangfuseAnalyticsServer {
             return await getComment(this.client, args);
           }
 
+          // New prefixed write tools (v1.4.0) - with enhanced validation
+          case 'write_create_dataset': {
+            const args = createDatasetSchema.parse(request.params.arguments);
+            return await createDataset(this.client, args);
+          }
+
+          case 'write_create_dataset_item': {
+            const args = createDatasetItemSchema.parse(request.params.arguments);
+            return await createDatasetItem(this.client, args);
+          }
+
+          case 'write_delete_dataset_item': {
+            const args = deleteDatasetItemSchema.parse(request.params.arguments);
+            // Validate confirmation for destructive operation
+            validateConfirmation(toolName, args.confirmed);
+            return await deleteDatasetItem(this.client, args);
+          }
+
+          case 'write_create_comment': {
+            const args = createCommentSchema.parse(request.params.arguments);
+            return await createComment(this.client, args);
+          }
+
           default:
-            throw new Error(`Unknown tool: ${request.params.name}`);
+            throw new Error(`Unknown tool: ${toolName}`);
         }
+
+        // Log successful write operations
+        const duration = Date.now() - startTime;
+        if (isWriteTool(toolName)) {
+          // Note: We can't access the actual result here without changing the return flow
+          // But we know it succeeded if we reach this point
+          this.auditLogger.logOperationSuccess(toolName, request.params.arguments || {}, undefined, duration);
+        }
+
       } catch (error) {
+        const duration = Date.now() - startTime;
         const errorMessage = error instanceof Error ? error.message : String(error);
+
+        // Log failed write operations
+        if (isWriteTool(toolName)) {
+          const err = error instanceof Error ? error : new Error(String(error));
+          this.auditLogger.logOperationError(toolName, request.params.arguments || {}, err, duration);
+        }
+
         return {
           content: [
             {

@@ -174,3 +174,24 @@ export interface DailyMetrics {
     avgTokensPerTrace: number;
   }>;
 }
+
+// Mode System Types for Read-Only/Read-Write MCP Server
+export type ServerMode = 'readonly' | 'readwrite';
+
+export interface ServerModeConfig {
+  mode: ServerMode;
+  allowedTools: Set<string>;
+}
+
+export interface WriteOperationRequest {
+  confirmed?: boolean; // Optional confirmation for destructive operations
+}
+
+export interface AuditLogEntry {
+  timestamp: string;
+  toolName: string;
+  args: Record<string, any>;
+  userId?: string;
+  result: 'success' | 'error';
+  error?: string;
+}
