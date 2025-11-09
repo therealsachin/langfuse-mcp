@@ -1,31 +1,61 @@
+#!/bin/bash
+set -e
+
 echo "🔍 Running pre-commit security checks..."
 
-# Check for potential secrets in staged files
-echo "🔐 Checking for potential credentials..."
+# Check for potential secrets using gitleaks (industry standard)
+echo "🔐 Checking for credentials with gitleaks..."
 
-# Check for Langfuse API keys (real format: pk-lf-uuid, sk-lf-uuid) in ADDED lines only
-if git diff --cached | grep -E '^\+.*' | grep -E '(pk-lf-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|sk-lf-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})'; then
-    echo "❌ ERROR: Real Langfuse API credentials detected in staged files!"
-    echo "   Please remove them and use environment variables instead."
-    exit 1
+# Install gitleaks if not available (lightweight, single binary)
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "📦 Installing gitleaks..."
+    if command -v brew >/dev/null 2>&1; then
+        brew install gitleaks
+    elif command -v curl >/dev/null 2>&1; then
+        # Download gitleaks binary directly
+        GITLEAKS_VERSION="8.21.2"
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        ARCH=$(uname -m)
+        if [ "$ARCH" = "x86_64" ]; then ARCH="x64"; fi
+        if [ "$ARCH" = "arm64" ]; then ARCH="arm64"; fi
+
+        curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_${OS}_${ARCH}.tar.gz" | tar xz
+        chmod +x gitleaks
+        sudo mv gitleaks /usr/local/bin/ 2>/dev/null || mv gitleaks ~/.local/bin/ 2>/dev/null || {
+            echo "❌ ERROR: Could not install gitleaks. Please install manually:"
+            echo "   brew install gitleaks"
+            echo "   OR download from: https://github.com/gitleaks/gitleaks/releases"
+            exit 1
+        }
+    else
+        echo "❌ ERROR: gitleaks not found and cannot auto-install."
+        echo "   Please install gitleaks:"
+        echo "   brew install gitleaks"
+        echo "   OR download from: https://github.com/gitleaks/gitleaks/releases"
+        exit 1
+    fi
 fi
 
-# Check for other common secrets patterns in ADDED lines only
-if git diff --cached | grep -E '^\+.*' | grep -E -i '(password|secret|token|api_key|access_key).*[:=]\s*["\'"'"'][^"'"'"']{8,}["\'"'"']'; then
-    echo "❌ ERROR: Potential secrets detected in staged files!"
-    echo "   Please review and remove sensitive data."
+# Run gitleaks on staged files only
+if ! gitleaks protect --staged --no-banner; then
+    echo ""
+    echo "❌ ERROR: Credentials detected by gitleaks!"
+    echo "   Please remove sensitive data before committing."
+    echo "   Use placeholder values like 'pk-lf-your-actual-key' instead."
     exit 1
 fi
 
 # Check for .env files being committed (should be in .gitignore)
-if git diff --cached --name-only | grep -E '^\.env$|^\.env\..*$'; then
+ENV_FILES=$(git diff --cached --name-only | grep -E '^\.env$|^\.env\..*$' || true)
+if [ ! -z "$ENV_FILES" ]; then
     echo "❌ ERROR: .env file detected in staged files!"
     echo "   .env files should never be committed. Add them to .gitignore."
+    echo "   Found: $ENV_FILES"
     exit 1
 fi
 
-# Check for files that should be in .gitignore
-FORBIDDEN_FILES=$(git diff --cached --name-only | grep -E '\.(langfuse\.json|credentials\.json)$')
+# Check for sensitive file patterns
+FORBIDDEN_FILES=$(git diff --cached --name-only | grep -E '\.(langfuse\.json|credentials\.json)$' || true)
 if [ ! -z "$FORBIDDEN_FILES" ]; then
     echo "❌ ERROR: Sensitive files detected:"
     echo "$FORBIDDEN_FILES"
@@ -33,17 +63,27 @@ if [ ! -z "$FORBIDDEN_FILES" ]; then
     exit 1
 fi
 
+# Ensure npm is available in PATH
+export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
+if ! command -v npm >/dev/null 2>&1; then
+    echo "❌ ERROR: npm not found in PATH during git hook execution"
+    echo "   Pre-commit hooks require npm to be available"
+    exit 1
+fi
+
 # Run build to ensure code compiles
 echo "🔨 Running build check..."
-if ! npm run build; then
+BUILD_OUTPUT=$(npm run build 2>&1) || BUILD_FAILED=true
+if [ "$BUILD_FAILED" = true ]; then
     echo "❌ ERROR: Build failed!"
     echo "   Please fix TypeScript compilation errors before committing."
+    echo "   Build output: $BUILD_OUTPUT"
     exit 1
 fi
 
 # Optional: Run tests but don't fail on test failures (due to test data dependency)
 echo "🧪 Running tests (informational)..."
-npm test || echo "⚠️  Tests failed - this may be due to missing test data, not code issues"
+npm test 2>/dev/null || echo "⚠️  Tests failed - this may be due to missing test data, not code issues"
 
 # If we get here, all security checks passed
 echo "✅ All pre-commit security checks passed!"
